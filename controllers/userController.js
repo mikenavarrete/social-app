@@ -1,94 +1,86 @@
-const {User} = require('../models');
-
-async function getAllUsers(req, res) {
-    try {
-        const users = await User.find();
-        res.json(users);
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to get users.'});
-    }
-}
-
-async function getUserById(req, res) {
-    try{
-        const user = await User.findById(req.params.userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found.'});
-        }
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to get user.'});
-    }
-}
-
-async function createUser(req, res) {
-    try {
-        const newUser = await User.create(req.body);
-        res.status(201).json(newUser);
-} catch (error) {
-    console.log(error)
-    res.status(400).json({ message: 'Failed to create user.'});
-}
-}
-
-async function updateUser(req, res) {
-    try {
-        const updatedUser = await User.findByIdAndUpdate(
-            req.params.userId,
-            req.body,
-            { new: true });
-            res.json(updatedUser);
-    } catch (error) {
-        res.status(400).json({ message: 'Failed to update user.'});
-    }
-}
-
-async function deleteUser(req, res) {
-    try {
-        await User.findByIdAndDelete(req.params.userId);
-        res.json({ message: 'User deleted successfully.'});
-        } catch (error) {
-            res.status(400).json({ message: 'Failed to delete user.'});
-}
-}
-async function addFriend(req, res) {
-    try {
-        const user = await User.findByIdAndUpdate(
-            req.params.userId,
-            { $addToSet: { friends: req.params.friendId } },
-            { new: true }
-        );
-        if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
-        }
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to add friend.' });
-    }
-}
-
-async function removeFriend(req, res) {
-    try {
-        const user = await User.findByIdAndUpdate(
-            req.params.userId,
-            { $pull: { friends: req.params.friendId } },
-            { new: true }
-        );
-        if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
-        }
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to remove friend.' });
-    }
-}
+const { User, Thought } = require("../models");
 
 module.exports = {
-    getAllUsers,
-    getUserById,
-    createUser,
-    updateUser,
-    deleteUser,
-    addFriend,
-    removeFriend,
-};
+    getUserById(req, res) {
+        User.findOne({ _id: req.params.userId })
+            .select('-__v')
+            .then((user) =>
+                !user
+                    ? res.status(404).json({ message: "Not found" })
+                    : res.json(user)
+            )
+            .catch((err) => res.status(500).json(err));
+
+
+    },
+    getAllUsers(req, res) {
+        User.find()
+            .then((user) => res.json(user))
+            .catch((err) => res.status(500).json(err));
+
+    },
+    createUser(req, res) {
+        User.create(req.body)
+            .then((user) => res.json(user))
+            .catch((err) => {
+                console.log((err))
+                return res.status(500).json(err);
+            });
+    },
+
+    deleteUser(req, res) {
+        User.findOneAndDelete(
+            { _id: req.params.userId })
+            .then((user) => {
+                if (!user) {
+                    return res.status(404).json({ message: "User not found" });
+                }
+  
+            })
+            .then(() => res.json({ message: "User and associated thoughts deleted" }))
+            .catch((err) => res.status(500).json({ message: 'Server error', error: err.message }));
+    },
+
+    updateUser(req, res){
+        User.findOneAndUpdate(
+            {_id: req.params.userId},
+            {$set: req.body},
+            {runValidators: true, new: true})
+            .then((user) =>
+                !user
+                    ?res.status(404).json({message: "User not found."})
+                    :res.json(user)
+            )
+            .catch((err) => res.status(500).json(err));
+
+    },
+    removeFriend(req, res){
+        User.findOneAndUpdate(
+            {_id: req.params.userId},
+            {$pull:{friends: req.params.friendId}},
+            {new: true})
+        .then((user) =>
+                !user
+                    ?res.status(404).json({message: "Not found"})
+                    :res.json(user)
+            )
+            .catch((err) => res.status(500).json(err));
+
+        
+
+    },
+    addFriend(req, res){
+        User.findOneAndUpdate(
+            {_id: req.params.userId},
+            {$addToSet:{friends: req.params.friendId}},
+            {runValidators: true, new: true})
+            
+        .then((user) =>
+                !user
+                    ?res.status(404).json({message: "Not found"})
+                    :res.json(user)
+            )
+            .catch((err) => res.status(500).json(err));
+    },
+
+}
